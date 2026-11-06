@@ -1,0 +1,25 @@
+# Testbed overlay: the Supervisor manifest plus MinIO, adapted to a single-node kind cluster.
+# Image tags are pinned by the generated wrapper in hack/deploy-kind-cluster.sh.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../manifests/supervisor
+  - minio.yaml
+
+patches:
+  - target:
+      kind: Deployment
+      name: vsphere-cosi-controller
+    patch: |-
+      # One node: a second replica could not satisfy the required pod anti-affinity.
+      - op: replace
+        path: /spec/replicas
+        value: 1
+      - op: remove
+        path: /spec/template/spec/affinity
+      # hostNetwork pods get the node's resolv.conf unless told otherwise, so the in-cluster
+      # MinIO Service name would not resolve. Supervisor reaches its object store by address.
+      - op: add
+        path: /spec/template/spec/dnsPolicy
+        value: ClusterFirstWithHostNet
