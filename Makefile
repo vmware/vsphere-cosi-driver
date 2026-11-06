@@ -29,6 +29,15 @@ COSI_BIN := $(BIN_OUT)/$(COSI_BIN_NAME).$(GOOS)_$(GOARCH)
 build:
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags '$(LDFLAGS)' -o $(COSI_BIN) ./cmd/$(COSI_BIN_NAME)
 
+# Deploy the Supervisor layout (driver, upstream COSI, MinIO) to a local kind cluster; see
+# hack/deploy-kind-cluster.sh -h. Extra flags: make local-dev ARGS="-c other".
+.PHONY: local-dev local-dev-teardown
+local-dev:
+	hack/deploy-kind-cluster.sh $(ARGS)
+
+local-dev-teardown:
+	hack/deploy-kind-cluster.sh -t $(ARGS)
+
 .PHONY: clean
 clean:
 	rm -rf $(BIN_OUT)/*
