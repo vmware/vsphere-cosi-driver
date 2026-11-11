@@ -1,0 +1,27 @@
+# Copyright 2026 The Kubernetes Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Dev only, used by hack/deploy-kind-cluster.sh. It wraps a binary built on the host (for the
+# kind node's architecture) instead of building in a builder stage like the release Dockerfile,
+# so it is not the release artifact. scratch has no CA bundle: add one before the driver makes
+# TLS calls to S3 or vSphere.
+ARG BASE_IMAGE=scratch
+
+FROM ${BASE_IMAGE}
+
+ARG BINARY
+
+COPY ${BINARY} /bin/vsphere-cosi
+
+ENTRYPOINT ["/bin/vsphere-cosi"]

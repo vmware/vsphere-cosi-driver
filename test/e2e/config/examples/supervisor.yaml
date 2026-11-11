@@ -1,0 +1,12 @@
+# Config for Supervisor(WCP) kubernetes cluster.
+# Names follow the Supervisor design doc and are not yet verified against a real Supervisor.
+cluster:
+  kubeconfig: ~/.kube/config
+  context: CHANGE-ME
+driver:
+  name: cosi.vsphere.vmware.com
+  namespace: vmware-system-cosi
+  deployment: vsphere-cosi-driver
+controller:
+  namespace: kube-system
+  deployment: cosi-controller

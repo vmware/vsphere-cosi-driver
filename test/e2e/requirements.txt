@@ -1,0 +1,3 @@
+pytest==9.1.1
+kubernetes==36.0.3
+PyYAML==6.0.3
