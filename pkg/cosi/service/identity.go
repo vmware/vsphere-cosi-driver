@@ -19,8 +19,8 @@ package service
 import (
 	"context"
 
+	cositypes "github.com/vmware/vsphere-cosi-driver/pkg/cosi/types"
 	cosi "sigs.k8s.io/container-object-storage-interface/proto"
-	cositypes "sigs.k8s.io/vsphere-cosi-driver/pkg/cosi/types"
 )
 
 type IdentityServer struct {

@@ -1,4 +1,4 @@
-module sigs.k8s.io/vsphere-cosi-driver
+module github.com/vmware/vsphere-cosi-driver
 
 go 1.26.7
 
