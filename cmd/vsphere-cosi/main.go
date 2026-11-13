@@ -26,8 +26,8 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	"sigs.k8s.io/vsphere-cosi-driver/pkg/cosi/service"
-	cositypes "sigs.k8s.io/vsphere-cosi-driver/pkg/cosi/types"
+	"github.com/vmware/vsphere-cosi-driver/pkg/cosi/service"
+	cositypes "github.com/vmware/vsphere-cosi-driver/pkg/cosi/types"
 )
 
 func main() {
