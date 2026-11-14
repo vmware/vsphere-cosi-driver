@@ -14,35 +14,30 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package manager builds the controller-runtime manager: leader election, metrics, health
-// probes and a cache limited to the store's namespace.
+// Package manager builds the controller-runtime manager: metrics, health probes and a cache
+// limited to the store's namespace. The operator runs one replica per store, so leader election
+// is off (follow-up: confirm with the team whether HA is needed).
 package manager
 
 import (
 	"fmt"
 
+	"github.com/vmware/vsphere-cosi-driver/internal/platform/config"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
-
-	"github.com/vmware/vsphere-cosi-driver/internal/platform/config"
 )
-
-// LeaderElectionID names the lease the operator replicas compete for.
-const LeaderElectionID = "object-store-operator"
 
 // NewOptions returns the manager options for cfg. It is separate from New so tests can inspect
 // them without a cluster.
 func NewOptions(cfg config.Config, scheme *runtime.Scheme) ctrl.Options {
 	return ctrl.Options{
-		Scheme:                  scheme,
-		Metrics:                 metricsserver.Options{BindAddress: cfg.MetricsAddr},
-		HealthProbeBindAddress:  cfg.ProbeAddr,
-		LeaderElection:          true,
-		LeaderElectionID:        LeaderElectionID,
-		LeaderElectionNamespace: cfg.Namespace,
+		Scheme:                 scheme,
+		Metrics:                metricsserver.Options{BindAddress: cfg.MetricsAddr},
+		HealthProbeBindAddress: cfg.ProbeAddr,
+		LeaderElection:         false,
 		Cache: cache.Options{
 			DefaultNamespaces: map[string]cache.Config{cfg.Namespace: {}},
 		},

@@ -20,11 +20,10 @@ package kube
 import (
 	"fmt"
 
-	"k8s.io/apimachinery/pkg/runtime"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-
 	"github.com/vmware/vsphere-cosi-driver/api/v1alpha1"
 	vboss "github.com/vmware/vsphere-cosi-driver/internal/vboss/v1alpha1"
+	"k8s.io/apimachinery/pkg/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 )
 
 // NewScheme returns a scheme with the built-in Kubernetes types, ObjectStoreBucket and the vSAN

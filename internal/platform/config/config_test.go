@@ -21,7 +21,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	"github.com/vmware/vsphere-cosi-driver/internal/platform/config"
 )
 

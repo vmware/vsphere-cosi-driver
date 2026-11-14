@@ -25,7 +25,8 @@ import (
 )
 
 // New returns a JSON zap logger at the given level (debug, info, warn or error, case
-// insensitive). An empty level means info.
+// insensitive). An empty level means info. Call it once at startup and pass the logger down
+// (derive child loggers with With), so no shared global is needed.
 func New(level string) (*zap.Logger, error) {
 	if level == "" {
 		level = "info"

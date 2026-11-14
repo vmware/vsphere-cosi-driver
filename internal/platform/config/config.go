@@ -14,12 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package config reads the operator's settings from its environment.
+// Package config reads process settings (namespace, log level, listen addresses) from the
+// environment, so a binary needs one place to load its configuration.
 package config
 
 import "errors"
 
-// Environment variables the operator reads.
+// Environment variables read at startup.
 const (
 	// EnvNamespace is the namespace the operator runs in and serves. Set it from the downward API.
 	EnvNamespace = "POD_NAMESPACE"
@@ -34,7 +35,7 @@ const (
 // ErrMissingNamespace is returned when POD_NAMESPACE is unset.
 var ErrMissingNamespace = errors.New(EnvNamespace + " is required")
 
-// Config holds the operator's settings.
+// Config holds the process settings.
 type Config struct {
 	Namespace   string
 	LogLevel    string

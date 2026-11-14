@@ -21,11 +21,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/vmware/vsphere-cosi-driver/api/v1alpha1"
 	"github.com/vmware/vsphere-cosi-driver/internal/platform/kube"
 	vboss "github.com/vmware/vsphere-cosi-driver/internal/vboss/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func TestNewScheme(t *testing.T) {

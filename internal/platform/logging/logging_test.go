@@ -21,9 +21,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap/zapcore"
-
 	"github.com/vmware/vsphere-cosi-driver/internal/platform/logging"
+	"go.uber.org/zap/zapcore"
 )
 
 func TestNewLogger(t *testing.T) {

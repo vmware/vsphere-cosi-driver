@@ -23,10 +23,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/runtime"
-
 	"github.com/vmware/vsphere-cosi-driver/internal/platform/config"
 	"github.com/vmware/vsphere-cosi-driver/internal/platform/manager"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 func TestManagerOptions(t *testing.T) {
@@ -40,9 +39,7 @@ func TestManagerOptions(t *testing.T) {
 		opts := manager.NewOptions(cfg, scheme)
 
 		// Assert
-		assert.True(tt, opts.LeaderElection)
-		assert.Equal(tt, "object-store-operator", opts.LeaderElectionID)
-		assert.Equal(tt, "store-ns", opts.LeaderElectionNamespace)
+		assert.False(tt, opts.LeaderElection)
 		assert.Equal(tt, ":8080", opts.Metrics.BindAddress)
 		assert.Equal(tt, ":8081", opts.HealthProbeBindAddress)
 		assert.Same(tt, scheme, opts.Scheme)
