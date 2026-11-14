@@ -4,7 +4,7 @@ cluster:
   kubeconfig: ~/.kube/config
   context: kind-cosi-cluster
 driver:
-  name: cosi.vsphere.broadcom.com
+  name: cosi.vsphere.vmware.com
   namespace: vmware-system-cosi
   deployment: vsphere-cosi-controller
 controller:
