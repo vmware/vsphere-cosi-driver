@@ -20,21 +20,21 @@ package errs
 
 import "errors"
 
-type classified struct {
+type classifiedError struct {
 	err      error
 	terminal bool
 	reason   string
 }
 
-func (e *classified) Error() string { return e.err.Error() }
-func (e *classified) Unwrap() error { return e.err }
+func (e *classifiedError) Error() string { return e.err.Error() }
+func (e *classifiedError) Unwrap() error { return e.err }
 
 // Retryable marks err as worth retrying with backoff. It returns nil for a nil err.
 func Retryable(err error) error {
 	if err == nil {
 		return nil
 	}
-	return &classified{err: err}
+	return &classifiedError{err: err}
 }
 
 // Terminal marks err as permanent: retrying cannot help until the input changes. reason is a
@@ -44,20 +44,19 @@ func Terminal(err error, reason string) error {
 	if err == nil {
 		return nil
 	}
-	return &classified{err: err, terminal: true, reason: reason}
+	return &classifiedError{err: err, terminal: true, reason: reason}
 }
 
 // IsTerminal reports whether the outermost classification in err is Terminal. An unclassified
 // error is not terminal, so unknown failures are retried.
 func IsTerminal(err error) bool {
-	var c *classified
-	return errors.As(err, &c) && c.terminal
+	c, ok := errors.AsType[*classifiedError](err)
+	return ok && c.terminal
 }
 
 // Reason returns the reason of a terminal error, or "" for any other error.
 func Reason(err error) string {
-	var c *classified
-	if errors.As(err, &c) && c.terminal {
+	if c, ok := errors.AsType[*classifiedError](err); ok && c.terminal {
 		return c.reason
 	}
 	return ""
