@@ -75,15 +75,15 @@ manifests: controller-gen
 	$(CONTROLLER_GEN) crd paths=./api/... output:crd:dir=manifests/crd
 	$(CONTROLLER_GEN) rbac:roleName=object-store-operator paths=./internal/... paths=./cmd/... output:rbac:dir=manifests/operator/rbac
 
-.PHONY: check fmt vet boilerplate
-check: fmt vet boilerplate
+.PHONY: check fmt vet boilerplate test
+check: fmt vet boilerplate test
 
 # Regenerates everything and fails if the working tree changes, so stale generated files,
 # or any other uncommitted change, show up. Run it on a committed tree (CI, before pushing).
 .PHONY: verify-clean
 verify-clean: manifests
 	@test -z "$$(git status --porcelain)" || \
-		{ echo "FAIL: working tree is not clean after make manifests:"; git status --short; exit 1; }
+		{ echo "FAIL: working tree is not clean"; git status --short; exit 1; }
 
 fmt:
 	hack/check-format.sh
@@ -93,6 +93,9 @@ vet:
 
 boilerplate:
 	hack/check-boilerplate.sh
+
+test:
+	go test -race ./...
 
 .PHONY: images
 images:
