@@ -67,22 +67,23 @@ $(CONTROLLER_GEN_STAMP):
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN_STAMP)
 
-# Writes zz_generated.deepcopy.go, the CRDs in config/crd and the operator RBAC in
-# manifests/operator/rbac. Commit the output; make check fails when it is stale.
+# Writes zz_generated.deepcopy.go, the CRDs in manifests/crd and the operator RBAC in
+# manifests/operator/rbac. Commit the output; make verify-clean fails when it is stale.
 .PHONY: manifests
 manifests: controller-gen
 	$(CONTROLLER_GEN) object:headerFile=hack/boilerplate.go.txt,year=2026 paths=./api/... paths=./internal/...
-	$(CONTROLLER_GEN) crd paths=./api/... output:crd:dir=config/crd
+	$(CONTROLLER_GEN) crd paths=./api/... output:crd:dir=manifests/crd
 	$(CONTROLLER_GEN) rbac:roleName=object-store-operator paths=./internal/... paths=./cmd/... output:rbac:dir=manifests/operator/rbac
 
-.PHONY: check fmt vet boilerplate manifests-drift
-check: fmt vet boilerplate manifests-drift
+.PHONY: check fmt vet boilerplate
+check: fmt vet boilerplate
 
-manifests-drift: manifests
-	@git diff --exit-code -- api internal config manifests/operator || \
-		{ echo "FAIL: generated files are stale; commit the output of make manifests"; exit 1; }
-	@test -z "$$(git ls-files --others --exclude-standard -- api internal config manifests/operator)" || \
-		{ echo "FAIL: untracked generated files; git add the output of make manifests"; exit 1; }
+# Regenerates everything and fails if the working tree changes, so stale generated files,
+# or any other uncommitted change, show up. Run it on a committed tree (CI, before pushing).
+.PHONY: verify-clean
+verify-clean: manifests
+	@test -z "$$(git status --porcelain)" || \
+		{ echo "FAIL: working tree is not clean after make manifests:"; git status --short; exit 1; }
 
 fmt:
 	hack/check-format.sh
