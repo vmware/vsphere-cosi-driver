@@ -18,5 +18,5 @@ package types
 
 const (
 	// Changing Name orphans existing Buckets and BucketAccesses.
-	Name = "cosi.vsphere.vmware.com"
+	Name = "cosi.vsphere.broadcom.com"
 )

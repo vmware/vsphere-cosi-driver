@@ -12,7 +12,7 @@ class Cluster:
 
 @dataclass(frozen=True)
 class Driver:
-    name: str = "cosi.vsphere.vmware.com"
+    name: str = "cosi.vsphere.broadcom.com"
     namespace: str = "vmware-system-cosi"
     deployment: str = "vsphere-cosi-controller"
 
