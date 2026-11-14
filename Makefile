@@ -54,8 +54,36 @@ local-dev-teardown:
 clean:
 	rm -rf $(BIN_OUT)/*
 
+# controller-gen generates deepcopy code, CRDs and RBAC from the kubebuilder markers in Go.
+# It is installed to bin/ and reinstalled only when the pinned version changes.
+CONTROLLER_TOOLS_VERSION ?= v0.23.0
+CONTROLLER_GEN := bin/controller-gen
+CONTROLLER_GEN_STAMP := bin/.controller-gen-$(CONTROLLER_TOOLS_VERSION)
+
+$(CONTROLLER_GEN_STAMP):
+	GOBIN=$(CURDIR)/bin go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
+	touch $@
+
+.PHONY: controller-gen
+controller-gen: $(CONTROLLER_GEN_STAMP)
+
+# Writes zz_generated.deepcopy.go, the CRDs in manifests/crd and the operator RBAC in
+# manifests/operator/rbac. Commit the output; make verify-clean fails when it is stale.
+.PHONY: manifests
+manifests: controller-gen
+	$(CONTROLLER_GEN) object:headerFile=hack/boilerplate.go.txt,year=2026 paths=./api/... paths=./internal/...
+	$(CONTROLLER_GEN) crd paths=./api/... output:crd:dir=manifests/crd
+	$(CONTROLLER_GEN) rbac:roleName=object-store-operator paths=./internal/... paths=./cmd/... output:rbac:dir=manifests/operator/rbac
+
 .PHONY: check fmt vet boilerplate
 check: fmt vet boilerplate
+
+# Regenerates everything and fails if the working tree changes, so stale generated files,
+# or any other uncommitted change, show up. Run it on a committed tree (CI, before pushing).
+.PHONY: verify-clean
+verify-clean: manifests
+	@test -z "$$(git status --porcelain)" || \
+		{ echo "FAIL: working tree is not clean after make manifests:"; git status --short; exit 1; }
 
 fmt:
 	hack/check-format.sh

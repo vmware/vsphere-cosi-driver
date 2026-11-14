@@ -26,6 +26,8 @@ HEADER_LINES="$(wc -l < "${BOILERPLATE}")"
 any_failure=false
 
 for file in $(git ls-files -- '*.go'); do
+  # Generated files start with a build tag, so the header cannot be first; skip them.
+  case "${file}" in */zz_generated.*) continue ;; esac
   if ! head -n "${HEADER_LINES}" "${file}" \
       | sed -E '2s/^Copyright [0-9]{4} /Copyright YEAR /' \
       | cmp -s - "${BOILERPLATE}"; then
