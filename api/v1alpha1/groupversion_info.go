@@ -17,7 +17,7 @@ limitations under the License.
 // Package v1alpha1 holds the paravirtual object store API: ObjectStoreBucket mirrors the
 // upstream COSI Bucket so the driver can translate gRPC calls into it.
 // +kubebuilder:object:generate=true
-// +groupName=cosi.vsphere.broadcom.com
+// +groupName=cosi.vsphere.vmware.com
 package v1alpha1
 
 import (
@@ -27,7 +27,7 @@ import (
 
 var (
 	// GroupVersion is the group and version of the types in this package.
-	GroupVersion = schema.GroupVersion{Group: "cosi.vsphere.broadcom.com", Version: "v1alpha1"}
+	GroupVersion = schema.GroupVersion{Group: "cosi.vsphere.vmware.com", Version: "v1alpha1"}
 
 	// SchemeBuilder registers the types with a scheme.
 	SchemeBuilder = &scheme.Builder{GroupVersion: GroupVersion}

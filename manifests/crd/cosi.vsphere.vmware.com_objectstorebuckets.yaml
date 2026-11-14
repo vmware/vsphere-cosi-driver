@@ -4,9 +4,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.23.0
-  name: objectstorebuckets.cosi.vsphere.broadcom.com
+  name: objectstorebuckets.cosi.vsphere.vmware.com
 spec:
-  group: cosi.vsphere.broadcom.com
+  group: cosi.vsphere.vmware.com
   names:
     kind: ObjectStoreBucket
     listKind: ObjectStoreBucketList
