@@ -3,3 +3,4 @@
 # Python e2e suite
 __pycache__/
 .pytest_cache/
+/bin/

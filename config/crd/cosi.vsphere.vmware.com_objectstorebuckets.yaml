@@ -1,0 +1,194 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.23.0
+  name: objectstorebuckets.cosi.vsphere.vmware.com
+spec:
+  group: cosi.vsphere.vmware.com
+  names:
+    kind: ObjectStoreBucket
+    listKind: ObjectStoreBucketList
+    plural: objectstorebuckets
+    singular: objectstorebucket
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: ObjectStoreBucket is a bucket requested on an object store. It
+          lives in the store's namespace.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: BucketSpec is the desired state of an ObjectStoreBucket.
+            properties:
+              bucketClaimRef:
+                description: BucketClaimRef is the claim this bucket serves.
+                properties:
+                  name:
+                    maxLength: 253
+                    minLength: 1
+                    type: string
+                    x-kubernetes-validations:
+                    - message: name must be a valid resource name
+                      rule: '!format.dns1123Subdomain().validate(self).hasValue()'
+                    - message: name is immutable
+                      rule: self == oldSelf
+                  namespace:
+                    maxLength: 63
+                    minLength: 1
+                    type: string
+                    x-kubernetes-validations:
+                    - message: namespace must be a valid namespace name
+                      rule: '!format.dns1123Label().validate(self).hasValue()'
+                    - message: namespace is immutable
+                      rule: self == oldSelf
+                  uid:
+                    description: |-
+                      UID is a type that holds unique ID values, including UUIDs.  Because we
+                      don't ONLY use UUIDs, this is an alias to string.  Being a type captures
+                      intent and helps make sure that UIDs and names do not get conflated.
+                    maxLength: 36
+                    minLength: 36
+                    pattern: ^[0-9a-f]{8}-([0-9a-f]{4}\-){3}[0-9a-f]{12}$
+                    type: string
+                    x-kubernetes-validations:
+                    - message: uid is immutable once set
+                      rule: oldSelf == '' || self == oldSelf
+                required:
+                - name
+                - namespace
+                type: object
+                x-kubernetes-validations:
+                - message: namespace cannot be removed once set
+                  rule: '!has(oldSelf.namespace) || has(self.namespace)'
+                - message: uid cannot be removed once set
+                  rule: '!has(oldSelf.uid) || has(self.uid)'
+              deletionPolicy:
+                description: DeletionPolicy is mutable so an admin can change it after
+                  creation.
+                enum:
+                - Retain
+                - Delete
+                type: string
+              driverName:
+                description: DriverName names the driver that serves this bucket.
+                maxLength: 63
+                minLength: 1
+                pattern: ^[a-zA-Z0-9]([a-zA-Z0-9\-\.]{0,61}[a-zA-Z0-9])?$
+                type: string
+                x-kubernetes-validations:
+                - message: driverName is immutable
+                  rule: self == oldSelf
+              existingBucketID:
+                description: |-
+                  ExistingBucketID selects a pre-existing backend bucket. The operator does not support it
+                  yet and treats a set value as a terminal error.
+                maxLength: 2048
+                minLength: 1
+                pattern: ^[a-zA-Z0-9/._-]+$
+                type: string
+                x-kubernetes-validations:
+                - message: existingBucketID is immutable
+                  rule: self == oldSelf
+              parameters:
+                additionalProperties:
+                  type: string
+                description: Parameters is an opaque, driver-specific map.
+                maxProperties: 512
+                minProperties: 1
+                type: object
+                x-kubernetes-validations:
+                - message: parameters map is immutable
+                  rule: self == oldSelf
+              protocols:
+                description: Protocols the bucket must support.
+                items:
+                  description: ObjectProtocol is an object store protocol a bucket
+                    can speak.
+                  enum:
+                  - S3
+                  - Azure
+                  - GCS
+                  type: string
+                maxItems: 3
+                minItems: 1
+                type: array
+                x-kubernetes-list-type: set
+                x-kubernetes-validations:
+                - message: protocols list is immutable
+                  rule: self == oldSelf
+            required:
+            - bucketClaimRef
+            - deletionPolicy
+            - driverName
+            type: object
+            x-kubernetes-validations:
+            - message: parameters map cannot be added or removed after creation
+              rule: has(oldSelf.parameters) == has(self.parameters)
+            - message: protocols list cannot be added or removed after creation
+              rule: has(oldSelf.protocols) == has(self.protocols)
+            - message: existingBucketID cannot be added or removed after creation
+              rule: has(oldSelf.existingBucketID) == has(self.existingBucketID)
+          status:
+            description: BucketStatus is the observed state of an ObjectStoreBucket.
+            properties:
+              bucketID:
+                description: BucketID is the backend bucket name.
+                type: string
+              bucketInfo:
+                additionalProperties:
+                  type: string
+                description: BucketInfo carries protocol details such as the endpoint.
+                type: object
+              error:
+                description: Error is the last failure, cleared on success.
+                properties:
+                  message:
+                    maxLength: 1024
+                    type: string
+                  time:
+                    format: date-time
+                    type: string
+                type: object
+              protocols:
+                description: Protocols the backend bucket supports.
+                items:
+                  description: ObjectProtocol is an object store protocol a bucket
+                    can speak.
+                  enum:
+                  - S3
+                  - Azure
+                  - GCS
+                  type: string
+                type: array
+                x-kubernetes-list-type: set
+              readyToUse:
+                description: ReadyToUse is true once the backend bucket exists.
+                type: boolean
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

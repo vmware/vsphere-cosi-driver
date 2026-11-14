@@ -20,7 +20,7 @@ set -o pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-out="$(gofmt -e -s -l ./cmd/ ./pkg/)"
+out="$(gofmt -e -s -l ./cmd/ ./pkg/ ./api/ ./internal/)"
 if [ -n "${out}" ]; then
   echo "${out}"
   echo "FAIL: files above need gofmt -s"

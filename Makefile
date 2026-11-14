@@ -54,8 +54,35 @@ local-dev-teardown:
 clean:
 	rm -rf $(BIN_OUT)/*
 
-.PHONY: check fmt vet boilerplate
-check: fmt vet boilerplate
+# controller-gen generates deepcopy code, CRDs and RBAC from the kubebuilder markers in Go.
+# It is installed to bin/ and reinstalled only when the pinned version changes.
+CONTROLLER_TOOLS_VERSION ?= v0.23.0
+CONTROLLER_GEN := bin/controller-gen
+CONTROLLER_GEN_STAMP := bin/.controller-gen-$(CONTROLLER_TOOLS_VERSION)
+
+$(CONTROLLER_GEN_STAMP):
+	GOBIN=$(CURDIR)/bin go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
+	touch $@
+
+.PHONY: controller-gen
+controller-gen: $(CONTROLLER_GEN_STAMP)
+
+# Writes zz_generated.deepcopy.go, the CRDs in config/crd and the operator RBAC in
+# manifests/operator/rbac. Commit the output; make check fails when it is stale.
+.PHONY: manifests
+manifests: controller-gen
+	$(CONTROLLER_GEN) object:headerFile=hack/boilerplate.go.txt,year=2026 paths=./api/... paths=./internal/...
+	$(CONTROLLER_GEN) crd paths=./api/... output:crd:dir=config/crd
+	$(CONTROLLER_GEN) rbac:roleName=object-store-operator paths=./internal/... paths=./cmd/... output:rbac:dir=manifests/operator/rbac
+
+.PHONY: check fmt vet boilerplate manifests-drift
+check: fmt vet boilerplate manifests-drift
+
+manifests-drift: manifests
+	@git diff --exit-code -- api internal config manifests/operator || \
+		{ echo "FAIL: generated files are stale; commit the output of make manifests"; exit 1; }
+	@test -z "$$(git ls-files --others --exclude-standard -- api internal config manifests/operator)" || \
+		{ echo "FAIL: untracked generated files; git add the output of make manifests"; exit 1; }
 
 fmt:
 	hack/check-format.sh
