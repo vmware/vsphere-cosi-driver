@@ -25,6 +25,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"regexp"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -62,6 +63,12 @@ type Client interface {
 	// objects. It never deletes objects.
 	DeleteBucket(ctx context.Context, name string) error
 }
+
+var validName = regexp.MustCompile(`^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$`)
+
+// ValidName reports whether name is a DNS-compatible S3 bucket name. Callers use it to reject a
+// bad name before any request is made.
+func ValidName(name string) bool { return validName.MatchString(name) }
 
 // region is a placeholder: the vSAN object store has no regions but the SDK needs one to sign.
 const region = "us-east-1"

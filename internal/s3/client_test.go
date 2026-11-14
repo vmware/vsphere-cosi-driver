@@ -352,3 +352,53 @@ func TestDeleteBucket(t *testing.T) {
 		assert.ErrorIs(tt, err, s3.ErrUnavailable)
 	})
 }
+
+func TestValidName(t *testing.T) {
+	t.Run("WhenNameIsLowercaseWithHyphenAndDot", func(tt *testing.T) {
+		// Execute
+		valid := s3.ValidName("my-bucket.01")
+
+		// Assert
+		assert.True(tt, valid)
+	})
+
+	t.Run("WhenNameIsTooShort", func(tt *testing.T) {
+		// Execute
+		valid := s3.ValidName("ab")
+
+		// Assert
+		assert.False(tt, valid)
+	})
+
+	t.Run("WhenNameIsTooLong", func(tt *testing.T) {
+		// Execute
+		valid := s3.ValidName(strings.Repeat("a", 64))
+
+		// Assert
+		assert.False(tt, valid)
+	})
+
+	t.Run("WhenNameHasUppercase", func(tt *testing.T) {
+		// Execute
+		valid := s3.ValidName("Bucket-a")
+
+		// Assert
+		assert.False(tt, valid)
+	})
+
+	t.Run("WhenNameHasUnderscore", func(tt *testing.T) {
+		// Execute
+		valid := s3.ValidName("bucket_a")
+
+		// Assert
+		assert.False(tt, valid)
+	})
+
+	t.Run("WhenNameStartsWithHyphen", func(tt *testing.T) {
+		// Execute
+		valid := s3.ValidName("-bucket")
+
+		// Assert
+		assert.False(tt, valid)
+	})
+}

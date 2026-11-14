@@ -23,16 +23,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"regexp"
 	"strings"
 	"sync"
 
 	"github.com/vmware/vsphere-cosi-driver/internal/s3"
 )
-
-// validName is the S3 rule for DNS-compatible names: 3 to 63 lower-case letters, digits, dots
-// and hyphens, starting and ending with a letter or digit.
-var validName = regexp.MustCompile(`^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$`)
 
 // Client is an in-memory store. The zero value is not usable; call New.
 type Client struct {
@@ -67,7 +62,7 @@ func (c *Client) BucketExists(_ context.Context, name string) (bool, error) {
 func (c *Client) CreateBucket(_ context.Context, name string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if !validName.MatchString(name) {
+	if !s3.ValidName(name) {
 		return fmt.Errorf("create bucket %q: %w", name, s3.ErrInvalidName)
 	}
 	if _, ok := c.buckets[name]; ok {
