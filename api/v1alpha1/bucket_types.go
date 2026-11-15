@@ -145,6 +145,13 @@ type BucketStatus struct {
 	// Error is the last failure, cleared on success.
 	// +optional
 	Error *TimestampedError `json:"error,omitempty"`
+
+	// Conditions report why the bucket is or is not ready. The operator writes a single Ready
+	// condition whose reason names the cause.
+	// +optional
+	// +listType=map
+	// +listMapKey=type
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // ObjectStoreBucket is a bucket requested on an object store. It lives in the store's namespace.
