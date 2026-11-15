@@ -1,0 +1,38 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: object-store-operator
+rules:
+- apiGroups:
+  - cosi.vsphere.vmware.com
+  resources:
+  - objectstorebuckets
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - cosi.vsphere.vmware.com
+  resources:
+  - objectstorebuckets/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - cosi.vsphere.vmware.com
+  resources:
+  - objectstorebuckets/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - objectstore.vsan.broadcom.com
+  resources:
+  - objectstores
+  verbs:
+  - get
+  - list
+  - watch

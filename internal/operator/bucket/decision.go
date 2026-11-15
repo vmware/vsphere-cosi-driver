@@ -32,10 +32,10 @@ import (
 // healthReady is the ObjectStore health state in which buckets can be created.
 const healthReady = "Ready"
 
-// Op is an S3 call the reconciler makes.
+// Op is a call to the object store the reconciler makes.
 type Op int
 
-// The S3 calls. The zero value is no call.
+// The calls. The zero value is no call.
 const (
 	OpNone Op = iota
 	OpHead
@@ -43,8 +43,8 @@ const (
 	OpDelete
 )
 
-// Call is an S3 call already made in this pass. Err is nil on success. A head that finds no
-// bucket records s3.ErrNotFound.
+// Call is a call to the store already made in this pass. Err is nil on success. A head that finds
+// no bucket records a not-found error.
 type Call struct {
 	Op  Op
 	Err error
@@ -87,7 +87,7 @@ type Outcome struct {
 }
 
 // Decide returns what to do next for the observed bucket. The reconciler calls it after
-// observing, and again after each step (with the S3 call's result added), until the step is
+// observing, and again after each step (with the call's result added), until the step is
 // StepNone or the outcome carries an error.
 func Decide(obs Observation) Outcome {
 	if !obs.Bucket.DeletionTimestamp.IsZero() {
@@ -111,7 +111,7 @@ func decideProvisioning(obs Observation) Outcome {
 		return retry(v1alpha1.ReasonCredentialsUnavailable, "the object store credentials are not available", nil)
 	}
 
-	// The finalizer goes on before the first S3 call, so a delete cannot skip the backend cleanup.
+	// The finalizer goes on before the first call to the store, so a delete cannot skip the backend cleanup.
 	if !slices.Contains(b.Finalizers, v1alpha1.Finalizer) {
 		return Outcome{Next: StepAddFinalizer}
 	}
@@ -178,8 +178,9 @@ func decideDeletion(obs Observation) Outcome {
 	}
 }
 
-// isUnsupported reports a spec this slice does not provision: static provisioning or non-S3.
+// isUnsupported reports a spec this slice does not provision: static provisioning or a protocol the operator does not serve.
 func isUnsupported(b *v1alpha1.ObjectStoreBucket) bool {
+	// TODO(CNAS-12589): support static provisioning (existingBucketID)
 	return b.Spec.ExistingBucketID != "" || !hasS3Protocol(b)
 }
 
@@ -214,7 +215,7 @@ func ready() Outcome {
 	return Outcome{Status: StatusPatch{ReadyToUse: true, Reason: v1alpha1.ReasonProvisioned, Message: "the bucket is ready"}}
 }
 
-// failure classifies an S3 error. The message is fixed text for users; err stays for logs.
+// failure classifies a store error. The message is fixed text for users; err stays for logs.
 func failure(err error) Outcome {
 	switch {
 	case errors.Is(err, s3.ErrInvalidName):
