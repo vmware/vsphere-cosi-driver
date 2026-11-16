@@ -34,10 +34,16 @@ type ExternalS3Endpoint struct {
 	FQDN string `json:"fqdn,omitempty"`
 }
 
+// IAMEndpoint is where IAM clients reach the store. FQDN is a full URL.
+type IAMEndpoint struct {
+	FQDN string `json:"fqdn,omitempty"`
+}
+
 // ObjectStoreStatus holds the fields of the vSAN ObjectStore status the operator reads.
 type ObjectStoreStatus struct {
 	HealthState        string             `json:"healthState,omitempty"`
 	ExternalS3Endpoint ExternalS3Endpoint `json:"externalS3Endpoint,omitempty"`
+	IAMEndpoint        IAMEndpoint        `json:"iamEndpoint,omitempty"`
 	Conditions         []metav1.Condition `json:"conditions,omitempty"`
 }
 
