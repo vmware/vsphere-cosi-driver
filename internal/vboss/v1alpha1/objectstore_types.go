@@ -39,6 +39,9 @@ type IAMEndpoint struct {
 	FQDN string `json:"fqdn,omitempty"`
 }
 
+// ObjectStoreKind is the kind of the vSAN ObjectStore.
+const ObjectStoreKind = "ObjectStore"
+
 // HealthStateReady is the health state of a store that serves requests.
 const HealthStateReady = "Ready"
 

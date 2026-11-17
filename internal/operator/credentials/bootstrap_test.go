@@ -36,6 +36,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	clientfake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
@@ -150,6 +151,17 @@ func newBootstrap(t *testing.T, rootDir string, f *factory, funcs interceptor.Fu
 	}, c
 }
 
+// isKnownKind reports whether the scheme knows the kind an owner reference points to, which the
+// garbage collector needs to find the owner.
+func isKnownKind(t *testing.T, ref metav1.OwnerReference) bool {
+	t.Helper()
+	scheme, err := kube.NewScheme()
+	require.NoError(t, err)
+	gv, err := schema.ParseGroupVersion(ref.APIVersion)
+	require.NoError(t, err)
+	return scheme.Recognizes(gv.WithKind(ref.Kind))
+}
+
 func getSecret(t *testing.T, c client.Client) *corev1.Secret {
 	t.Helper()
 	s := &corev1.Secret{}
@@ -186,6 +198,7 @@ func TestEnsure(t *testing.T) {
 		require.Len(tt, secret.OwnerReferences, 1)
 		assert.Equal(tt, "store", secret.OwnerReferences[0].Name)
 		assert.Equal(tt, "store-uid", string(secret.OwnerReferences[0].UID))
+		assert.True(tt, isKnownKind(tt, secret.OwnerReferences[0]))
 	})
 
 	t.Run("WhenConnectingToTheStore", func(tt *testing.T) {

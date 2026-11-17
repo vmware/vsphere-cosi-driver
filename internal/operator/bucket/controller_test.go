@@ -151,7 +151,7 @@ func getBucket(t *testing.T, c client.Client, name string) *v1alpha1.ObjectStore
 	return b
 }
 
-func bucketExists(t *testing.T, s s3.Client, name string) bool {
+func hasBucket(t *testing.T, s s3.Client, name string) bool {
 	t.Helper()
 	exists, err := s.BucketExists(context.Background(), name)
 	require.NoError(t, err)
@@ -188,7 +188,7 @@ func TestReconcile(t *testing.T) {
 		assertStatus(tt, got, true, v1alpha1.ReasonProvisioned)
 		assert.Equal(tt, "bucket-a", got.Status.BucketID)
 		assert.Equal(tt, []v1alpha1.ObjectProtocol{v1alpha1.ProtocolS3}, got.Status.Protocols)
-		assert.True(tt, bucketExists(tt, store, "bucket-a"))
+		assert.True(tt, hasBucket(tt, store, "bucket-a"))
 		assert.Equal(tt, storeEndpoint, f.endpoint)
 		assert.Equal(tt, "access", f.accessKey)
 		assert.Equal(tt, "secret", f.secretKey)
@@ -336,8 +336,9 @@ func TestReconcile(t *testing.T) {
 
 	t.Run("WhenListingStoresFails", func(tt *testing.T) {
 		// Setup
+		errAPI := errors.New("api unavailable")
 		funcs := interceptor.Funcs{List: func(ctx context.Context, c client.WithWatch, list client.ObjectList, opts ...client.ListOption) error {
-			return errors.New("api unavailable")
+			return errAPI
 		}}
 		r, _ := newReconciler(tt, newCredentials(tt), &factory{client: fake.New()}, funcs, newBucket("bucket-a"), newStore("Ready"))
 
@@ -345,7 +346,7 @@ func TestReconcile(t *testing.T) {
 		_, err := reconcileBucket(r, "bucket-a")
 
 		// Assert
-		assert.ErrorContains(tt, err, "api unavailable")
+		assert.ErrorIs(tt, err, errAPI)
 	})
 
 	t.Run("WhenS3ClientCannotBeBuilt", func(tt *testing.T) {
@@ -432,8 +433,9 @@ func TestReconcile(t *testing.T) {
 
 	t.Run("WhenReadingTheBucketFails", func(tt *testing.T) {
 		// Setup
+		errAPI := errors.New("api unavailable")
 		funcs := interceptor.Funcs{Get: func(context.Context, client.WithWatch, client.ObjectKey, client.Object, ...client.GetOption) error {
-			return errors.New("api unavailable")
+			return errAPI
 		}}
 		r, _ := newReconciler(tt, tt.TempDir(), &factory{client: fake.New()}, funcs, newBucket("bucket-a"))
 
@@ -441,7 +443,7 @@ func TestReconcile(t *testing.T) {
 		_, err := reconcileBucket(r, "bucket-a")
 
 		// Assert
-		assert.ErrorContains(tt, err, "api unavailable")
+		assert.ErrorIs(tt, err, errAPI)
 	})
 
 	t.Run("WhenTheSameFailureRepeats", func(tt *testing.T) {
@@ -467,8 +469,9 @@ func TestReconcile(t *testing.T) {
 
 	t.Run("WhenWritingStatusFails", func(tt *testing.T) {
 		// Setup
+		errAPI := errors.New("api unavailable")
 		funcs := interceptor.Funcs{SubResourcePatch: func(context.Context, client.Client, string, client.Object, client.Patch, ...client.SubResourcePatchOption) error {
-			return errors.New("api unavailable")
+			return errAPI
 		}}
 		r, _ := newReconciler(tt, newCredentials(tt), &factory{client: fake.New()}, funcs, newBucket("bucket-a"), newStore("Ready"))
 
@@ -476,14 +479,15 @@ func TestReconcile(t *testing.T) {
 		_, err := reconcileBucket(r, "bucket-a")
 
 		// Assert
-		assert.ErrorContains(tt, err, "api unavailable")
+		assert.ErrorIs(tt, err, errAPI)
 	})
 
 	t.Run("WhenAddingTheFinalizerFails", func(tt *testing.T) {
 		// Setup
+		errAPI := errors.New("api unavailable")
 		store := fake.New()
 		funcs := interceptor.Funcs{Patch: func(context.Context, client.WithWatch, client.Object, client.Patch, ...client.PatchOption) error {
-			return errors.New("api unavailable")
+			return errAPI
 		}}
 		r, _ := newReconciler(tt, newCredentials(tt), &factory{client: store}, funcs, newBucket("bucket-a"), newStore("Ready"))
 
@@ -491,8 +495,8 @@ func TestReconcile(t *testing.T) {
 		_, err := reconcileBucket(r, "bucket-a")
 
 		// Assert
-		assert.ErrorContains(tt, err, "api unavailable")
-		assert.False(tt, bucketExists(tt, store, "bucket-a"))
+		assert.ErrorIs(tt, err, errAPI)
+		assert.False(tt, hasBucket(tt, store, "bucket-a"))
 	})
 
 	t.Run("WhenDeletingABucketThatExists", func(tt *testing.T) {
@@ -506,7 +510,7 @@ func TestReconcile(t *testing.T) {
 
 		// Assert
 		require.NoError(tt, err)
-		assert.False(tt, bucketExists(tt, store, "bucket-a"))
+		assert.False(tt, hasBucket(tt, store, "bucket-a"))
 		err = c.Get(context.Background(), types.NamespacedName{Namespace: storeNamespace, Name: "bucket-a"}, &v1alpha1.ObjectStoreBucket{})
 		assert.True(tt, apierrors.IsNotFound(err))
 	})
@@ -540,7 +544,7 @@ func TestReconcile(t *testing.T) {
 		got := getBucket(tt, c, "bucket-a")
 		assert.Contains(tt, got.Finalizers, v1alpha1.Finalizer)
 		assertStatus(tt, got, false, v1alpha1.ReasonBucketNotEmpty)
-		assert.True(tt, bucketExists(tt, store, "bucket-a"))
+		assert.True(tt, hasBucket(tt, store, "bucket-a"))
 	})
 
 	t.Run("WhenDeletingAndTheStoreFails", func(tt *testing.T) {
@@ -585,7 +589,7 @@ func TestReconcile(t *testing.T) {
 
 		// Assert
 		require.NoError(tt, err)
-		assert.True(tt, bucketExists(tt, store, "bucket-a"))
+		assert.True(tt, hasBucket(tt, store, "bucket-a"))
 		err = c.Get(context.Background(), types.NamespacedName{Namespace: storeNamespace, Name: "bucket-a"}, &v1alpha1.ObjectStoreBucket{})
 		assert.True(tt, apierrors.IsNotFound(err))
 	})
@@ -605,8 +609,9 @@ func TestReconcile(t *testing.T) {
 
 	t.Run("WhenReleasingTheFinalizerFails", func(tt *testing.T) {
 		// Setup
+		errAPI := errors.New("api unavailable")
 		funcs := interceptor.Funcs{Patch: func(context.Context, client.WithWatch, client.Object, client.Patch, ...client.PatchOption) error {
-			return errors.New("api unavailable")
+			return errAPI
 		}}
 		r, _ := newReconciler(tt, newCredentials(tt), &factory{client: fake.New()}, funcs, newDeletingBucket("bucket-a"), newStore("Ready"))
 
@@ -614,7 +619,7 @@ func TestReconcile(t *testing.T) {
 		_, err := reconcileBucket(r, "bucket-a")
 
 		// Assert
-		assert.ErrorContains(tt, err, "api unavailable")
+		assert.ErrorIs(tt, err, errAPI)
 	})
 }
 

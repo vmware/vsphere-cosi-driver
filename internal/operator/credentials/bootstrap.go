@@ -39,7 +39,8 @@ import (
 )
 
 const (
-	// SecretName is the Secret that holds the operator's own key.
+	// SecretName is the Secret that holds the operator's own key. The RBAC marker on Ensure names
+	// it too, so change both together.
 	SecretName = "cosi-operator-credentials"
 	// UserName is the store user the key belongs to.
 	UserName = "cosi-operator"
@@ -209,7 +210,7 @@ func (b *Bootstrap) save(ctx context.Context, store *vboss.ObjectStore, key iam.
 		}
 		secret.OwnerReferences = []metav1.OwnerReference{{
 			APIVersion: vboss.GroupVersion.String(),
-			Kind:       "ObjectStore",
+			Kind:       vboss.ObjectStoreKind,
 			Name:       store.Name,
 			UID:        store.UID,
 		}}
