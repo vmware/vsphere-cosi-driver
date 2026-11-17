@@ -87,7 +87,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	accessKey, secretKey, err := credentials.Read(r.CredentialsDir)
+	accessKey, secretKey, err := credentials.GetAccessKey(r.CredentialsDir)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

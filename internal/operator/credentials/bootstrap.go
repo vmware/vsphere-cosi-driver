@@ -148,7 +148,7 @@ func (b *Bootstrap) Ensure(ctx context.Context) error {
 	if store == nil || store.Status.HealthState != vboss.HealthStateReady {
 		return ErrStoreNotReady
 	}
-	rootAccessKey, rootSecretKey, err := Read(b.RootCredentialsDir)
+	rootAccessKey, rootSecretKey, err := GetAccessKey(b.RootCredentialsDir)
 	if err != nil {
 		return err
 	}
@@ -221,9 +221,9 @@ func (b *Bootstrap) save(ctx context.Context, store *vboss.ObjectStore, key iam.
 	return nil
 }
 
-// Read returns the key pair mounted in dir, one file per key. A missing file gives an empty value,
-// so a caller can tell a Secret that is not there yet from one that cannot be read.
-func Read(dir string) (accessKey, secretKey string, err error) {
+// GetAccessKey returns the key pair mounted in dir, one file per key. A missing file gives an
+// empty value, so a caller can tell a Secret that is not there yet from one that cannot be read.
+func GetAccessKey(dir string) (accessKey, secretKey string, err error) {
 	accessKey, err = readFile(filepath.Join(dir, AccessKeyName))
 	if err != nil {
 		return "", "", err

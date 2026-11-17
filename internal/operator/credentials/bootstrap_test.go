@@ -550,7 +550,7 @@ func TestStart(t *testing.T) {
 	})
 }
 
-func TestRead(t *testing.T) {
+func TestGetAccessKey(t *testing.T) {
 	t.Run("WhenBothFilesExist", func(tt *testing.T) {
 		// Setup
 		dir := tt.TempDir()
@@ -558,7 +558,7 @@ func TestRead(t *testing.T) {
 		writeFile(tt, dir, credentials.SecretKeyName, "secret")
 
 		// Execute
-		accessKey, secretKey, err := credentials.Read(dir)
+		accessKey, secretKey, err := credentials.GetAccessKey(dir)
 
 		// Assert
 		require.NoError(tt, err)
@@ -568,7 +568,7 @@ func TestRead(t *testing.T) {
 
 	t.Run("WhenFilesAreMissing", func(tt *testing.T) {
 		// Execute
-		accessKey, secretKey, err := credentials.Read(tt.TempDir())
+		accessKey, secretKey, err := credentials.GetAccessKey(tt.TempDir())
 
 		// Assert
 		require.NoError(tt, err)
@@ -582,7 +582,7 @@ func TestRead(t *testing.T) {
 		writeFile(tt, dir, credentials.AccessKeyName, "access")
 
 		// Execute
-		accessKey, secretKey, err := credentials.Read(dir)
+		accessKey, secretKey, err := credentials.GetAccessKey(dir)
 
 		// Assert
 		require.NoError(tt, err)
@@ -596,7 +596,7 @@ func TestRead(t *testing.T) {
 		require.NoError(tt, os.Mkdir(filepath.Join(dir, credentials.AccessKeyName), 0o700))
 
 		// Execute
-		accessKey, secretKey, err := credentials.Read(dir)
+		accessKey, secretKey, err := credentials.GetAccessKey(dir)
 
 		// Assert
 		require.Error(tt, err)
@@ -611,7 +611,7 @@ func TestRead(t *testing.T) {
 		require.NoError(tt, os.Mkdir(filepath.Join(dir, credentials.SecretKeyName), 0o700))
 
 		// Execute
-		accessKey, secretKey, err := credentials.Read(dir)
+		accessKey, secretKey, err := credentials.GetAccessKey(dir)
 
 		// Assert
 		require.Error(tt, err)
