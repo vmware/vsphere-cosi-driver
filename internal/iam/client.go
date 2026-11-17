@@ -15,8 +15,7 @@ limitations under the License.
 */
 
 // Package iam is the operator's view of the object store's IAM API: the calls that give the
-// operator a user and a key of its own, and errors it can branch on. The driver never imports it;
-// only the operator talks to the store.
+// operator a user and a key of its own, and errors it can branch on.
 package iam
 
 import (

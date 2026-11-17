@@ -29,8 +29,8 @@ import (
 // ErrMultiple is returned when the namespace holds more than one ObjectStore.
 var ErrMultiple = errors.New("more than one ObjectStore in the namespace")
 
-// Find returns the one ObjectStore in the namespace, or nil when there is none. A reconciler calls
-// it for each request. Each operator serves a single store, so more than one is an error.
+// Find returns the one ObjectStore in the namespace, or nil when there is none. Each operator
+// serves a single store, so more than one is an error.
 func Find(ctx context.Context, c client.Reader, namespace string) (*vboss.ObjectStore, error) {
 	var stores vboss.ObjectStoreList
 	if err := c.List(ctx, &stores, client.InNamespace(namespace)); err != nil {

@@ -87,7 +87,7 @@ var (
 
 // Bootstrap gives the operator its own key. With the store's root credentials it creates a
 // dedicated user, attaches a policy and mints a key, and keeps the key in a Secret in the
-// operator's namespace. The reconciler uses that key and never sees the root credentials.
+// operator's namespace.
 type Bootstrap struct {
 	// Client reads and writes the Secret and reads the ObjectStore. It should talk to the API
 	// server directly: the manager's cache holds no Secrets.
@@ -175,8 +175,7 @@ func (b *Bootstrap) Ensure(ctx context.Context) error {
 }
 
 // hasKey reports whether the Secret already holds a key, which means both entries are present
-// and not empty. Whether the store still accepts the key shows up later, when the reconciler is
-// denied: the store has no cheap call to check it here.
+// and not empty.
 func (b *Bootstrap) hasKey(ctx context.Context) (bool, error) {
 	secret := &corev1.Secret{}
 	err := b.Client.Get(ctx, client.ObjectKey{Namespace: b.Namespace, Name: SecretName}, secret)
@@ -222,9 +221,8 @@ func (b *Bootstrap) save(ctx context.Context, store *vboss.ObjectStore, key iam.
 	return nil
 }
 
-// Read returns the key pair mounted in dir, one file per key. A reconciler calls it on every pass.
-// A missing file gives an empty value, so a caller can tell a Secret that is not there yet from
-// one that cannot be read.
+// Read returns the key pair mounted in dir, one file per key. A missing file gives an empty value,
+// so a caller can tell a Secret that is not there yet from one that cannot be read.
 func Read(dir string) (accessKey, secretKey string, err error) {
 	accessKey, err = readFile(filepath.Join(dir, AccessKeyName))
 	if err != nil {
