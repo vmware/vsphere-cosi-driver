@@ -67,13 +67,13 @@ $(CONTROLLER_GEN_STAMP):
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN_STAMP)
 
-# Writes zz_generated.deepcopy.go, the CRDs in manifests/crd and the operator RBAC in
-# manifests/operator/rbac. Commit the output; make verify-clean fails when it is stale.
+# Writes zz_generated.deepcopy.go, the CRDs in manifests/supervisor/crd and the operator RBAC in
+# manifests/supervisor/operator/rbac. Commit the output; make verify-clean fails when it is stale.
 .PHONY: manifests
 manifests: controller-gen
 	$(CONTROLLER_GEN) object:headerFile=hack/boilerplate.go.txt,year=2026 paths=./api/... paths=./internal/...
-	$(CONTROLLER_GEN) crd paths=./api/... output:crd:dir=manifests/crd
-	$(CONTROLLER_GEN) rbac:roleName=object-store-operator paths=./internal/... paths=./cmd/... output:rbac:dir=manifests/operator/rbac
+	$(CONTROLLER_GEN) crd paths=./api/... output:crd:dir=manifests/supervisor/crd
+	$(CONTROLLER_GEN) rbac:roleName=object-store-operator paths=./internal/... paths=./cmd/... output:rbac:dir=manifests/supervisor/operator/rbac
 
 .PHONY: check fmt vet boilerplate test
 check: fmt vet boilerplate test

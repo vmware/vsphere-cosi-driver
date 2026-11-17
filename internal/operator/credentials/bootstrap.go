@@ -14,12 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package credentials holds the operator's access to its object store: the key pair as a Secret
+// and as mounted files, and the bootstrap that creates it.
 package credentials
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/vmware/vsphere-cosi-driver/internal/iam"
@@ -29,6 +34,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -41,8 +47,18 @@ const (
 	PolicyName = "cosi-operator"
 )
 
+// The names of the keys of a credentials Secret. A mounted Secret shows each key as a file of the
+// same name.
+const (
+	AccessKeyName = "akey"
+	SecretKeyName = "secret"
+)
+
 // policyDocument lets the user manage buckets and, for the access resources that come later,
-// users and keys. It is applied only when a key is created.
+// users and keys. It is applied only when a key is created. Version is the policy language
+// version, not a revision of this policy.
+//
+// TODO(CNAS-12563): confirm the policy format with the vSAN team.
 const policyDocument = `{
   "Version": "2012-10-17",
   "Statement": [{
@@ -116,15 +132,11 @@ func (b *Bootstrap) Start(ctx context.Context) error {
 // succeeds. It does nothing when the Secret is already complete, so a restart never mints a
 // second key.
 func (b *Bootstrap) Ensure(ctx context.Context) error {
-	secret := &corev1.Secret{}
-	err := b.Client.Get(ctx, client.ObjectKey{Namespace: b.Namespace, Name: SecretName}, secret)
-	isFound := err == nil
-	switch {
-	case apierrors.IsNotFound(err):
-		secret = &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: b.Namespace, Name: SecretName}}
-	case err != nil:
-		return fmt.Errorf("get Secret %q: %w", SecretName, err)
-	case len(secret.Data[AccessKeyName]) > 0 && len(secret.Data[SecretKeyName]) > 0:
+	found, err := b.hasKey(ctx)
+	if err != nil {
+		return err
+	}
+	if found {
 		return nil
 	}
 
@@ -151,7 +163,7 @@ func (b *Bootstrap) Ensure(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := b.save(ctx, secret, isFound, store, key); err != nil {
+	if err := b.save(ctx, store, key); err != nil {
 		// The store cannot list keys, so one that is not kept could never be found again.
 		if deleteErr := iamClient.DeleteAccessKey(ctx, UserName, key.ID); deleteErr != nil {
 			err = errors.Join(err, deleteErr)
@@ -159,6 +171,21 @@ func (b *Bootstrap) Ensure(ctx context.Context) error {
 		return err
 	}
 	return nil
+}
+
+// hasKey reports whether the Secret already holds a key, which means both entries are present
+// and not empty. Whether the store still accepts the key shows up later, when the reconciler is
+// denied: the store has no cheap call to check it here.
+func (b *Bootstrap) hasKey(ctx context.Context) (bool, error) {
+	secret := &corev1.Secret{}
+	err := b.Client.Get(ctx, client.ObjectKey{Namespace: b.Namespace, Name: SecretName}, secret)
+	if apierrors.IsNotFound(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("get Secret %q: %w", SecretName, err)
+	}
+	return len(secret.Data[AccessKeyName]) > 0 && len(secret.Data[SecretKeyName]) > 0, nil
 }
 
 // mint creates the user if it is missing, attaches the policy and adds a key.
@@ -173,20 +200,49 @@ func mint(ctx context.Context, c iam.Client) (iam.AccessKey, error) {
 }
 
 // save writes the key into the Secret, which goes away with the store that issued the key.
-func (b *Bootstrap) save(ctx context.Context, secret *corev1.Secret, isFound bool, store *vboss.ObjectStore, key iam.AccessKey) error {
-	if secret.Data == nil {
-		secret.Data = map[string][]byte{}
+func (b *Bootstrap) save(ctx context.Context, store *vboss.ObjectStore, key iam.AccessKey) error {
+	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: b.Namespace, Name: SecretName}}
+	_, err := controllerutil.CreateOrUpdate(ctx, b.Client, secret, func() error {
+		secret.Data = map[string][]byte{
+			AccessKeyName: []byte(key.ID),
+			SecretKeyName: []byte(key.Secret),
+		}
+		secret.OwnerReferences = []metav1.OwnerReference{{
+			APIVersion: vboss.GroupVersion.String(),
+			Kind:       "ObjectStore",
+			Name:       store.Name,
+			UID:        store.UID,
+		}}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("write Secret %q: %w", SecretName, err)
 	}
-	secret.Data[AccessKeyName] = []byte(key.ID)
-	secret.Data[SecretKeyName] = []byte(key.Secret)
-	secret.OwnerReferences = []metav1.OwnerReference{{
-		APIVersion: vboss.GroupVersion.String(),
-		Kind:       "ObjectStore",
-		Name:       store.Name,
-		UID:        store.UID,
-	}}
-	if isFound {
-		return b.Client.Update(ctx, secret)
+	return nil
+}
+
+// Read returns the key pair mounted in dir, one file per key. A reconciler calls it on every pass.
+// A missing file gives an empty value, so a caller can tell a Secret that is not there yet from
+// one that cannot be read.
+func Read(dir string) (accessKey, secretKey string, err error) {
+	accessKey, err = readFile(filepath.Join(dir, AccessKeyName))
+	if err != nil {
+		return "", "", err
 	}
-	return b.Client.Create(ctx, secret)
+	secretKey, err = readFile(filepath.Join(dir, SecretKeyName))
+	if err != nil {
+		return "", "", err
+	}
+	return accessKey, secretKey, nil
+}
+
+func readFile(path string) (string, error) {
+	value, err := os.ReadFile(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("read credentials: %w", err)
+	}
+	return string(value), nil
 }
