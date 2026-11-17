@@ -18,13 +18,10 @@ package bucket
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"io/fs"
-	"os"
-	"path/filepath"
 
 	"github.com/vmware/vsphere-cosi-driver/api/v1alpha1"
+	"github.com/vmware/vsphere-cosi-driver/internal/operator/credentials"
+	"github.com/vmware/vsphere-cosi-driver/internal/operator/objectstore"
 	"github.com/vmware/vsphere-cosi-driver/internal/platform/errs"
 	"github.com/vmware/vsphere-cosi-driver/internal/platform/kube"
 	"github.com/vmware/vsphere-cosi-driver/internal/s3"
@@ -38,23 +35,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-// The files of the credentials directory, named after the keys of the store's admin Secret.
-const (
-	accessKeyFile = "akey"
-	secretKeyFile = "secret"
-)
-
-// ErrMultipleStores is returned when the namespace holds more than one ObjectStore.
-var ErrMultipleStores = errors.New("more than one ObjectStore in the namespace")
-
 // Reconciler creates and deletes the buckets of one store on behalf of ObjectStoreBuckets in the
 // store's namespace.
 type Reconciler struct {
 	Client client.Client
 	// NewS3Client connects to the store. It runs at most once per reconcile.
 	NewS3Client func(endpoint, accessKey, secretKey string) (s3.Client, error)
-	// CredentialsDir is where the store's admin Secret is mounted, one file per key. It is read
-	// on every reconcile, so a rotated credential is picked up.
+	// CredentialsDir is where the operator's own credentials Secret is mounted, one file per key.
+	// It is read on every reconcile, so a changed Secret is picked up.
 	CredentialsDir string
 }
 
@@ -95,11 +83,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	if err := r.Client.Get(ctx, req.NamespacedName, b); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	store, err := r.findStore(ctx, req.Namespace)
+	store, err := objectstore.Find(ctx, r.Client, req.Namespace)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	accessKey, secretKey, err := r.readCredentials()
+	accessKey, secretKey, err := credentials.Read(r.CredentialsDir)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -149,45 +137,6 @@ func finish(ctx context.Context, out Outcome) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 	return ctrl.Result{}, out.Err
-}
-
-func (r *Reconciler) findStore(ctx context.Context, namespace string) (*vboss.ObjectStore, error) {
-	var stores vboss.ObjectStoreList
-	if err := r.Client.List(ctx, &stores, client.InNamespace(namespace)); err != nil {
-		return nil, fmt.Errorf("list ObjectStores: %w", err)
-	}
-	switch len(stores.Items) {
-	case 0:
-		return nil, nil
-	case 1:
-		return &stores.Items[0], nil
-	default:
-		return nil, ErrMultipleStores
-	}
-}
-
-// readCredentials returns empty keys when a file is missing.
-func (r *Reconciler) readCredentials() (accessKey, secretKey string, err error) {
-	accessKey, err = readCredential(filepath.Join(r.CredentialsDir, accessKeyFile))
-	if err != nil {
-		return "", "", err
-	}
-	secretKey, err = readCredential(filepath.Join(r.CredentialsDir, secretKeyFile))
-	if err != nil {
-		return "", "", err
-	}
-	return accessKey, secretKey, nil
-}
-
-func readCredential(path string) (string, error) {
-	value, err := os.ReadFile(path)
-	if errors.Is(err, fs.ErrNotExist) {
-		return "", nil
-	}
-	if err != nil {
-		return "", fmt.Errorf("read the store's admin credentials: %w", err)
-	}
-	return string(value), nil
 }
 
 // run makes one call to the object store.

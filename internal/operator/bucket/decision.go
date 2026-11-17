@@ -29,9 +29,6 @@ import (
 	vboss "github.com/vmware/vsphere-cosi-driver/internal/vboss/v1alpha1"
 )
 
-// healthReady is the ObjectStore health state in which buckets can be created.
-const healthReady = "Ready"
-
 // Op is a call to the object store the reconciler makes.
 type Op int
 
@@ -105,7 +102,7 @@ func decideProvisioning(obs Observation) Outcome {
 		return stop(v1alpha1.ReasonInvalidName, "the name is not a valid S3 bucket name", nil)
 	case obs.Store == nil:
 		return retry(v1alpha1.ReasonStoreNotFound, "no object store in the namespace", nil)
-	case obs.Store.Status.HealthState != healthReady:
+	case obs.Store.Status.HealthState != vboss.HealthStateReady:
 		return retry(v1alpha1.ReasonStoreNotReady, "the object store is not ready", nil)
 	case !obs.HasCredentials:
 		return retry(v1alpha1.ReasonCredentialsUnavailable, "the object store credentials are not available", nil)

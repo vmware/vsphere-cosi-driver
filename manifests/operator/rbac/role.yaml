@@ -5,6 +5,21 @@ metadata:
   name: object-store-operator
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - create
+- apiGroups:
+  - ""
+  resourceNames:
+  - cosi-operator-credentials
+  resources:
+  - secrets
+  verbs:
+  - get
+  - update
+- apiGroups:
   - cosi.vsphere.vmware.com
   resources:
   - objectstorebuckets

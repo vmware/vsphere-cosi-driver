@@ -39,6 +39,9 @@ type IAMEndpoint struct {
 	FQDN string `json:"fqdn,omitempty"`
 }
 
+// HealthStateReady is the health state of a store that serves requests.
+const HealthStateReady = "Ready"
+
 // ObjectStoreStatus holds the fields of the vSAN ObjectStore status the operator reads.
 type ObjectStoreStatus struct {
 	HealthState        string             `json:"healthState,omitempty"`
