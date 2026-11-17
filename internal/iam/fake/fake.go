@@ -14,8 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package fake is an in-memory IAM service for tests and the fake stand-in. It returns the same
-// errors as the real client and is held to the same contract suite.
 package fake
 
 import (

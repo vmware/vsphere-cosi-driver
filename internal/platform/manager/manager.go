@@ -14,9 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package manager builds the controller-runtime manager: metrics, health probes and a cache
-// limited to the store's namespace. The operator runs one replica per store, so leader election
-// is off (follow-up: confirm with the team whether HA is needed).
 package manager
 
 import (
@@ -37,7 +34,7 @@ func NewOptions(cfg config.Config, scheme *runtime.Scheme) ctrl.Options {
 		Scheme:                 scheme,
 		Metrics:                metricsserver.Options{BindAddress: cfg.MetricsAddr},
 		HealthProbeBindAddress: cfg.ProbeAddr,
-		LeaderElection:         false,
+		LeaderElection:         false, // one replica per store; whether HA is needed is open (CNAS-12562)
 		Cache: cache.Options{
 			DefaultNamespaces: map[string]cache.Config{cfg.Namespace: {}},
 		},

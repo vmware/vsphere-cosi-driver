@@ -14,8 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package credentials holds the operator's access to its object store: the key pair as a Secret
-// and as mounted files, and the bootstrap that creates it.
 package credentials
 
 import (

@@ -14,8 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package config reads process settings (namespace, log level, listen addresses) from the
-// environment, so a binary needs one place to load its configuration.
 package config
 
 import "errors"

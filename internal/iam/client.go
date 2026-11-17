@@ -14,8 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package iam is the operator's view of the object store's IAM API: the calls that give the
-// operator a user and a key of its own, and errors it can branch on.
 package iam
 
 import (

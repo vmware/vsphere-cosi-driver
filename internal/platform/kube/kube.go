@@ -14,8 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package kube holds the Kubernetes plumbing that reconcilers share: the scheme the client and
-// cache use, and the patches a reconciler repeats.
 package kube
 
 import (

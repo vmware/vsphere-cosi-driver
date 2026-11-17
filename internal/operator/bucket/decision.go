@@ -14,8 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package bucket holds the operator's rules for one ObjectStoreBucket. Decide is a pure function:
-// the reconciler observes, asks what to do next, acts, and asks again with the result added.
 package bucket
 
 import (

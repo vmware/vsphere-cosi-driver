@@ -14,8 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package v1alpha1 is a read-only subset of the vSAN object store ObjectStore API: only the
-// fields the operator uses. Unknown fields are ignored on decode.
 // +kubebuilder:object:generate=true
 // +groupName=objectstore.vsan.broadcom.com
 package v1alpha1

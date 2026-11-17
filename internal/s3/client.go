@@ -14,8 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package s3 is the operator's view of an S3 object store: the three bucket calls it needs, and
-// errors it can branch on. The driver never imports it; only the operator talks S3.
 package s3
 
 import (

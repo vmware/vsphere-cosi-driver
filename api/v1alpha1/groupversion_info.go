@@ -14,8 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package v1alpha1 holds the paravirtual object store API: ObjectStoreBucket mirrors the
-// upstream COSI Bucket so the driver can translate gRPC calls into it.
 // +kubebuilder:object:generate=true
 // +groupName=cosi.vsphere.vmware.com
 package v1alpha1

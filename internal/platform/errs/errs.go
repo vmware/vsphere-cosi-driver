@@ -14,8 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package errs classifies failures as retryable or terminal. Lower layers return plain wrapped
-// errors; the boundary that decides what to do (a reconciler, an RPC handler) reads the class.
 package errs
 
 import "errors"
