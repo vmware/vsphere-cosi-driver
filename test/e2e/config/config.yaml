@@ -10,3 +10,12 @@ driver:
 controller:
   namespace: kube-system
   deployment: cosi-controller
+operator:
+  namespace: cosi-store
+  deployment: object-store-operator
+# fake: the testbed runs the stand-in. Scenarios that need one skip unless it is fake.
+standins:
+  s3_backend: fake
+  iam: fake
+  objectstore: fake
+  admin_secret: fake

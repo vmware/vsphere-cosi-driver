@@ -51,3 +51,32 @@ def test_shipped_config_loads():
 def test_example_configs_load(name):
     path = os.path.join(os.path.dirname(SHIPPED), "examples", name)
     assert e2e_config.load(path).cluster.context
+
+
+def test_operator_defaults(tmp_path):
+    cfg = e2e_config.load(write(tmp_path, {"cluster": {"context": "x"}}))
+    assert (cfg.operator.namespace, cfg.operator.deployment) == ("cosi-store", "object-store-operator")
+
+
+def test_standins_default_to_fake(tmp_path):
+    cfg = e2e_config.load(write(tmp_path, {"cluster": {"context": "x"}}))
+    assert cfg.standins == e2e_config.Standins(s3_backend="fake", iam="fake", objectstore="fake",
+                                               admin_secret="fake")
+
+
+def test_standins_mode_accepted(tmp_path):
+    cfg = e2e_config.load(write(tmp_path, {"cluster": {"context": "x"},
+                                           "standins": {"iam": "real", "objectstore": "off"}}))
+    assert (cfg.standins.iam, cfg.standins.objectstore) == ("real", "off")
+
+
+def test_standins_rejects_unknown_mode(tmp_path):
+    p = write(tmp_path, {"cluster": {"context": "x"}, "standins": {"iam": "mock"}})
+    with pytest.raises(ValueError, match="standins.iam.*mock"):
+        e2e_config.load(p)
+
+
+def test_standins_rejects_unknown_stand_in(tmp_path):
+    p = write(tmp_path, {"cluster": {"context": "x"}, "standins": {"wcpsvc": "fake"}})
+    with pytest.raises(ValueError, match="wcpsvc"):
+        e2e_config.load(p)

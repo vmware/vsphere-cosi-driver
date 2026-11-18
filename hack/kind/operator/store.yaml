@@ -1,0 +1,24 @@
+# The object store the operator serves, as the vSAN team would create it: an ObjectStore that
+# reports Ready, with the endpoints of the stand-ins (the fake IAM service and MinIO), and the
+# root credentials Secret that the fake IAM service accepts. Kind has no real store. The keys are
+# fixed and local-only; the pair must match ADMIN_ACCESS_KEY and ADMIN_SECRET_KEY in
+# test/e2e/standins/iam/fake.py.
+apiVersion: objectstore.vsan.broadcom.com/v1alpha1
+kind: ObjectStore
+metadata:
+  name: store
+spec: {}
+status:
+  healthState: Ready
+  externalS3Endpoint:
+    fqdn: http://minio.minio.svc.cluster.local:9000
+  iamEndpoint:
+    fqdn: http://fake-iam:8080
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vboss-admin-secret
+stringData:
+  akey: iam-admin-key
+  secret: iam-admin-secret

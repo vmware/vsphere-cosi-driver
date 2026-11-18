@@ -1,0 +1,10 @@
+# Testbed overlay: the operator, the fake IAM service and the store the operator serves. The wrapper in hack/deploy-kind-cluster.sh
+# sets the namespace, the operator image and the Python image. objectstore-crd.yaml is not listed:
+# the script applies it first, so the kind exists when the operator starts.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../manifests/supervisor/operator
+  - fake-iam.yaml
+  - store.yaml

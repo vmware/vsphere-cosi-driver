@@ -1,4 +1,4 @@
-"""Checks the testbed is ready: cluster reachable, driver and controller up, driver leader lease live."""
+"""Checks the testbed is ready: cluster reachable, driver, controller and operator up, driver leader lease live."""
 import pytest
 from kubernetes import client
 from kubernetes.client.rest import ApiException
@@ -60,6 +60,17 @@ def test_driver_deployment_available(apps_v1, cfg):
 def test_controller_deployment_available(apps_v1, cfg):
     """The upstream COSI controller Deployment has all its replicas Available."""
     _wait_deployment(apps_v1, cfg.controller.namespace, cfg.controller.deployment)
+
+
+def test_operator_deployment_available(apps_v1, cfg):
+    """The object store operator Deployment has all its replicas Available."""
+    _wait_deployment(apps_v1, cfg.operator.namespace, cfg.operator.deployment)
+
+
+@pytest.mark.needs("iam")
+def test_fake_iam_deployment_available(apps_v1, cfg):
+    """The fake IAM service, which the testbed deploys next to the operator, is Available."""
+    _wait_deployment(apps_v1, cfg.operator.namespace, "fake-iam")
 
 
 def test_driver_leader_lease_live(coordination_v1, cfg):

@@ -10,3 +10,13 @@ driver:
 controller:
   namespace: kube-system
   deployment: cosi-controller
+# Names of the operator's namespace and Deployment are not yet verified against a real Supervisor.
+operator:
+  namespace: CHANGE-ME
+  deployment: object-store-operator
+# Scenarios that need a stand-in skip unless it is fake, and real mode has no scenarios yet.
+standins:
+  s3_backend: real
+  iam: real
+  objectstore: real
+  admin_secret: real

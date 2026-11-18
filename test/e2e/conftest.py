@@ -21,13 +21,29 @@ def pytest_collection_modifyitems(items):
             item.add_marker(pytest.mark.unit)
 
 
-@pytest.fixture(scope="session")
-def cfg(request):
-    path = os.path.abspath(request.config.getoption("--config"))
+def _load_config(config):
+    path = os.path.abspath(config.getoption("--config"))
     try:
         return e2e_config.load(path)
     except (OSError, ValueError) as e:
         pytest.fail(f"invalid e2e config {path}: {e}", pytrace=False)
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_runtest_setup(item):
+    """Skips a test marked needs(...) before its fixtures run, unless every named stand-in is fake."""
+    names = [n for mark in item.iter_markers("needs") for n in mark.args]
+    if not names:
+        return
+    unmet = e2e_config.unmet_standins(_load_config(item.config).standins, names)
+    if unmet:
+        pytest.skip("needs stand-ins configured as fake: "
+                    + ", ".join(f"{n} is {mode}" for n, mode in unmet.items()))
+
+
+@pytest.fixture(scope="session")
+def cfg(request):
+    return _load_config(request.config)
 
 
 @pytest.fixture(scope="session")
@@ -67,3 +83,8 @@ def apps_v1(api_client):
 @pytest.fixture(scope="session")
 def coordination_v1(api_client):
     return client.CoordinationV1Api(api_client)
+
+
+@pytest.fixture(scope="session")
+def custom_v1(api_client):
+    return client.CustomObjectsApi(api_client)

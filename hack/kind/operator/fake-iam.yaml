@@ -1,0 +1,48 @@
+# Fake IAM service (test/e2e/standins/iam). The deploy script creates ConfigMap fake-iam-script
+# from fake.py, because the stock Python image has no copy of it.
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: fake-iam
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: fake-iam
+  template:
+    metadata:
+      labels:
+        app: fake-iam
+    spec:
+      containers:
+        - name: fake-iam
+          image: python
+          imagePullPolicy: IfNotPresent
+          args: ["python", "-u", "/app/fake.py"]
+          ports:
+            - name: iam
+              containerPort: 8080
+          readinessProbe:
+            tcpSocket:
+              port: iam
+          volumeMounts:
+            - mountPath: /app
+              name: script
+      volumes:
+        - name: script
+          configMap:
+            name: fake-iam-script
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: fake-iam
+spec:
+  selector:
+    app: fake-iam
+  ports:
+    - name: iam
+      port: 8080
+      targetPort: iam

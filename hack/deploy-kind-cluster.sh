@@ -16,7 +16,8 @@
 
 
 # deploy-kind-cluster.sh: build and deploy the vSphere COSI driver (plus the upstream COSI
-# controller and sidecar) into a shared local kind cluster, and tear the driver down again.
+# controller and sidecar) and the object store operator into a shared local kind cluster, and
+# tear them down again.
 
 set -o errexit
 set -o nounset
@@ -36,6 +37,9 @@ MINIO_IMAGE="${MINIO_IMAGE:-ghcr.io/coollabsio/minio:RELEASE.2025-10-15T17-29-55
 # Optional `docker save` tarball, used when MINIO_IMAGE is not in the local Docker and
 # cannot be pulled (public registries are blocked on some networks).
 MINIO_IMAGE_TAR="${MINIO_IMAGE_TAR:-}"
+# Runs the fake IAM service (test/e2e/standins/iam). Pinned for the same reason as MinIO.
+FAKE_IAM_IMAGE="${FAKE_IAM_IMAGE:-docker.io/library/python:3.12-slim}"
+FAKE_IAM_IMAGE_TAR="${FAKE_IAM_IMAGE_TAR:-}"
 
 # Upstream COSI components deployed alongside the driver. Their image tags are derived from
 # the path lists below. The controller is placed as on Supervisor: Deployment cosi-controller
@@ -59,6 +63,14 @@ DRIVER_IMAGE="vsphere-cosi"
 DRIVER_PATHS=(cmd pkg go.mod go.sum images/driver/Dockerfile.dev)
 BACKEND_SECRET="vsphere-cosi-s3-backend"
 MINIO_NS="minio"
+
+# The object store operator and its stand-ins share one namespace, as the operator and its store
+# do on Supervisor.
+OPERATOR_NS="cosi-store"
+OPERATOR_DEPLOY="object-store-operator"
+OPERATOR_IMAGE="object-store-operator"
+OPERATOR_PATHS=(cmd internal api go.mod go.sum images/operator/Dockerfile.dev)
+FAKE_IAM_SCRIPT_CONFIGMAP="fake-iam-script"
 WRAPPER_DIR="${ROOT}/.build/deploy-kind-cluster"
 
 log() { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
@@ -83,8 +95,8 @@ usage() {
 Usage: hack/deploy-kind-cluster.sh [options]
   -c, --cluster NAME     kind cluster name         (default: cosi-cluster)
   -r, --cosi-root PATH   upstream COSI repo root   (default: ../container-object-storage-interface)
-  -t, --teardown         remove the vSphere driver (its namespace, including the backend Secret)
-                         and MinIO, then exit
+  -t, --teardown         remove the vSphere driver (its namespace, including the backend Secret),
+                         MinIO and the object store operator testbed, then exit
       --delete-cluster   with -t, also delete the kind cluster (other drivers on it are lost)
   -h, --help             show this help
 USAGE
@@ -208,24 +220,26 @@ setup_cluster() {
   fi
 }
 
-# Makes MINIO_IMAGE available in the cluster node.
-prepare_minio_image() {
-  if image_in_cluster "${MINIO_IMAGE}"; then
-    skip "MinIO image in cluster (${MINIO_IMAGE})"
+# prepare_image <image> <tarball-or-empty> <variable-prefix>: makes a public image available in
+# the cluster node. The prefix names the settings in the error, for example MINIO_IMAGE.
+prepare_image() {
+  local image="$1" tar="$2" var="$3"
+  if image_in_cluster "${image}"; then
+    skip "image in cluster (${image})"
     return
   fi
-  if ! docker image inspect "${MINIO_IMAGE}" >/dev/null 2>&1; then
-    if [[ -n "${MINIO_IMAGE_TAR}" ]]; then
-      log "loading MinIO image from ${MINIO_IMAGE_TAR}"
-      run_quiet docker load -i "${MINIO_IMAGE_TAR}" || die "cannot load ${MINIO_IMAGE_TAR}"
+  if ! docker image inspect "${image}" >/dev/null 2>&1; then
+    if [[ -n "${tar}" ]]; then
+      log "loading ${image} from ${tar}"
+      run_quiet docker load -i "${tar}" || die "cannot load ${tar}"
     else
-      log "pulling ${MINIO_IMAGE}"
-      run_quiet docker pull "${MINIO_IMAGE}" ||
-        die "cannot pull ${MINIO_IMAGE}. Set MINIO_IMAGE to a reachable image, or MINIO_IMAGE_TAR to a 'docker save' tarball."
+      log "pulling ${image}"
+      run_quiet docker pull "${image}" ||
+        die "cannot pull ${image}. Set ${var}_IMAGE to a reachable image, or ${var}_IMAGE_TAR to a 'docker save' tarball."
     fi
   fi
-  log "loading ${MINIO_IMAGE} into kind"
-  load_image "${MINIO_IMAGE}"
+  log "loading ${image} into kind"
+  load_image "${image}"
 }
 
 deploy_controller() {
@@ -361,6 +375,80 @@ deploy_driver() {
   kc -n "${DRIVER_NS}" rollout status "deploy/${DRIVER_DEPLOY}" --timeout=180s
 }
 
+# Writes a kustomization that applies hack/kind/operator in the operator's namespace with the
+# per-build operator image and the pinned Python image for the fake IAM service. The operator
+# image is set by container name because the manifest uses a <placeholder> tag.
+render_operator_wrapper() { # <operator-image-ref>
+  local dir="${WRAPPER_DIR}/operator" iam_name="${FAKE_IAM_IMAGE%:*}" iam_tag="${FAKE_IAM_IMAGE##*:}"
+  mkdir -p "${dir}"
+  cat >"${dir}/kustomization.yaml" <<KUSTOMIZATION
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../../hack/kind/operator
+namespace: ${OPERATOR_NS}
+images:
+  - name: python
+    newName: ${iam_name}
+    newTag: ${iam_tag}
+patches:
+  - target:
+      kind: Deployment
+      name: ${OPERATOR_DEPLOY}
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: ${OPERATOR_DEPLOY}
+      spec:
+        template:
+          spec:
+            containers:
+              - name: ${OPERATOR_DEPLOY}
+                image: ${1}
+KUSTOMIZATION
+}
+
+# build_operator_image <image-ref>: builds the operator binary on the host, for the kind node's
+# architecture, and wraps it in an image.
+build_operator_image() {
+  local arch
+  arch="$(node_arch)"
+  run_quiet make -C "${ROOT}" build GOOS=linux GOARCH="${arch}"
+  run_quiet docker build -f "${ROOT}/images/operator/Dockerfile.dev" \
+    --build-arg BINARY="object-store-operator.linux_${arch}" --tag "$1" "${ROOT}/.build/bin"
+}
+
+# Installs the operator, the fake IAM service and the store they serve in OPERATOR_NS, and the two
+# CRDs they need. The operator creates its own key once, at startup, with the store's root
+# credentials; the Secret volume that carries it reaches the pod about a minute later.
+deploy_operator() {
+  local want have cm_out restart_iam=false
+  want="${OPERATOR_IMAGE}:$(image_tag "${ROOT}" "${OPERATOR_PATHS[@]}")"
+  have="$(deployed_image "${OPERATOR_NS}" "${OPERATOR_DEPLOY}" "${OPERATOR_DEPLOY}")"
+  log "operator: ${have:-<not deployed>} -> ${want}"
+  if ! image_in_cluster "${want}"; then
+    build_operator_image "${want}"
+    load_image "${want}"
+  fi
+  prepare_image "${FAKE_IAM_IMAGE}" "${FAKE_IAM_IMAGE_TAR}" FAKE_IAM
+
+  # The CRDs come first so the kinds exist when the operator starts.
+  kc apply -f "${ROOT}/manifests/supervisor/crd" -f "${ROOT}/hack/kind/operator/objectstore-crd.yaml"
+  kc wait --for=condition=Established --timeout=60s \
+    crd/objectstorebuckets.cosi.vsphere.vmware.com crd/objectstores.objectstore.vsan.broadcom.com
+  kc create namespace "${OPERATOR_NS}" --dry-run=client -o yaml | kc apply -f - >/dev/null
+  cm_out="$(kc -n "${OPERATOR_NS}" create configmap "${FAKE_IAM_SCRIPT_CONFIGMAP}" \
+    --from-file=fake.py="${ROOT}/test/e2e/standins/iam/fake.py" --dry-run=client -o yaml | kc apply -f -)"
+  [[ "${cm_out}" == *configured* ]] && restart_iam=true
+  render_operator_wrapper "${want}"
+  kc apply -k "${WRAPPER_DIR}/operator"
+  # A pod does not notice a changed ConfigMap, so a changed script needs a new pod.
+  ! ${restart_iam} || kc -n "${OPERATOR_NS}" rollout restart deploy/fake-iam
+  kc -n "${OPERATOR_NS}" rollout status deploy/fake-iam --timeout=180s
+  kc -n "${OPERATOR_NS}" rollout status "deploy/${OPERATOR_DEPLOY}" --timeout=180s
+}
+
 # Applies the Secret holding the S3 backend credentials. It runs before the driver rolls
 # out, so a driver that consumes the Secret finds it, and it is re-applied every run so
 # changed values take effect. The AWS_* keys mirror the design's admin ConfigSecret; nothing
@@ -384,6 +472,11 @@ teardown() {
     skip "kind cluster '${CLUSTER_NAME}' not present"
     return
   fi
+  # The operator goes first, while MinIO is still there to complete the deletion of its buckets.
+  log "removing the object store operator testbed"
+  kc delete namespace "${OPERATOR_NS}" --ignore-not-found --wait=true --timeout=120s
+  kc delete clusterrole object-store-operator --ignore-not-found
+  kc delete crd objectstorebuckets.cosi.vsphere.vmware.com objectstores.objectstore.vsan.broadcom.com --ignore-not-found
   log "removing the vSphere driver and MinIO"
   kc delete namespace "${DRIVER_NS}" "${MINIO_NS}" --ignore-not-found --wait=true
   kc delete clusterrolebinding vsphere-cosi-controller-binding --ignore-not-found
@@ -409,11 +502,12 @@ main() {
   [[ "${MINIO_IMAGE##*/}" == *:* ]] || die "MINIO_IMAGE must include a tag: ${MINIO_IMAGE}"
 
   setup_cluster
-  prepare_minio_image
+  prepare_image "${MINIO_IMAGE}" "${MINIO_IMAGE_TAR}" MINIO
   deploy_controller
   deploy_sidecar
   configure_backend
   deploy_driver
+  deploy_operator
   log "done. kubectl context: kind-${CLUSTER_NAME}"
 }
 
