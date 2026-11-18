@@ -1,0 +1,15 @@
+# The role is a ClusterRole so it is defined once; this binding gives it to the operator in one
+# namespace only. Never bind it with a ClusterRoleBinding: it lets the operator create Secrets.
+# The subject has no namespace on purpose: kustomize sets it from the overlay's namespace, and
+# only when it is empty. Applied without kustomize, the binding would match no one.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: object-store-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: object-store-operator
+subjects:
+  - kind: ServiceAccount
+    name: object-store-operator

@@ -28,6 +28,10 @@ const (
 	EnvMetricsAddr = "METRICS_ADDR"
 	// EnvProbeAddr is the health probe listen address.
 	EnvProbeAddr = "PROBE_ADDR"
+	// EnvCredentialsDir is where the operator's own key is mounted, one file per key.
+	EnvCredentialsDir = "CREDENTIALS_DIR"
+	// EnvRootCredentialsDir is where the store's root credentials are mounted, one file per key.
+	EnvRootCredentialsDir = "ROOT_CREDENTIALS_DIR"
 )
 
 // ErrMissingNamespace is returned when POD_NAMESPACE is unset.
@@ -35,19 +39,23 @@ var ErrMissingNamespace = errors.New(EnvNamespace + " is required")
 
 // Config holds the process settings.
 type Config struct {
-	Namespace   string
-	LogLevel    string
-	MetricsAddr string
-	ProbeAddr   string
+	Namespace          string
+	LogLevel           string
+	MetricsAddr        string
+	ProbeAddr          string
+	CredentialsDir     string
+	RootCredentialsDir string
 }
 
 // Load reads the settings through getenv, so tests do not touch the process environment.
 func Load(getenv func(string) string) (Config, error) {
 	cfg := Config{
-		Namespace:   getenv(EnvNamespace),
-		LogLevel:    valueOr(getenv(EnvLogLevel), "info"),
-		MetricsAddr: valueOr(getenv(EnvMetricsAddr), ":8080"),
-		ProbeAddr:   valueOr(getenv(EnvProbeAddr), ":8081"),
+		Namespace:          getenv(EnvNamespace),
+		LogLevel:           valueOr(getenv(EnvLogLevel), "info"),
+		MetricsAddr:        valueOr(getenv(EnvMetricsAddr), ":8080"),
+		ProbeAddr:          valueOr(getenv(EnvProbeAddr), ":8081"),
+		CredentialsDir:     valueOr(getenv(EnvCredentialsDir), "/etc/cosi/credentials"),
+		RootCredentialsDir: valueOr(getenv(EnvRootCredentialsDir), "/etc/cosi/root-credentials"),
 	}
 	if cfg.Namespace == "" {
 		return Config{}, ErrMissingNamespace

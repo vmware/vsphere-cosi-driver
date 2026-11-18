@@ -24,10 +24,13 @@ LDFLAGS := -extldflags "-static" -w -s
 
 COSI_BIN_NAME := vsphere-cosi
 COSI_BIN := $(BIN_OUT)/$(COSI_BIN_NAME).$(GOOS)_$(GOARCH)
+OPERATOR_BIN_NAME := object-store-operator
+OPERATOR_BIN := $(BIN_OUT)/$(OPERATOR_BIN_NAME).$(GOOS)_$(GOARCH)
 
 .PHONY: build
 build:
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags '$(LDFLAGS)' -o $(COSI_BIN) ./cmd/$(COSI_BIN_NAME)
+	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags '$(LDFLAGS)' -o $(OPERATOR_BIN) ./cmd/$(OPERATOR_BIN_NAME)
 
 # Python e2e suite (pip install -r test/e2e/requirements.txt once). Pass pytest arguments
 # with ARGS, e.g. make test-e2e ARGS="-k name", and pick a config with CONFIG.

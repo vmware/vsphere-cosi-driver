@@ -8,6 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/iam v1.66.0
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.96.4
 	github.com/aws/smithy-go v1.28.9
+	github.com/go-logr/zapr v1.3.0
 	github.com/stretchr/testify v1.12.1
 	go.uber.org/zap v1.28.0
 	google.golang.org/grpc v1.83.1

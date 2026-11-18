@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: object-store-operator
+  labels:
+    app: object-store-operator
+spec:
+  replicas: 1
+  # Recreate keeps one operator at a time. There is no leader election, and a second pod would
+  # create a second key for the store.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: object-store-operator
+  template:
+    metadata:
+      labels:
+        app: object-store-operator
+    spec:
+      serviceAccountName: object-store-operator
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: object-store-operator
+          image: localhost:5000/vmware/object-store-operator:<object_store_operator_ver>
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: CREDENTIALS_DIR
+              value: /etc/cosi/credentials
+            - name: ROOT_CREDENTIALS_DIR
+              value: /etc/cosi/root-credentials
+          ports:
+            - name: metrics
+              containerPort: 8080
+            - name: probes
+              containerPort: 8081
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: probes
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: probes
+          securityContext:
+            runAsUser: 65534
+            runAsGroup: 65533
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          volumeMounts:
+            - name: credentials
+              mountPath: /etc/cosi/credentials
+              readOnly: true
+            - name: root-credentials
+              mountPath: /etc/cosi/root-credentials
+              readOnly: true
+      volumes:
+        # Optional so the pod starts before the bootstrap has written the operator's key.
+        - name: credentials
+          secret:
+            secretName: cosi-operator-credentials
+            optional: true
+            items:
+              - key: akey
+                path: akey
+              - key: secret
+                path: secret
+        # Read by the bootstrap only, to create the operator's own key.
+        - name: root-credentials
+          secret:
+            secretName: vboss-admin-secret
+            optional: true
+            items:
+              - key: akey
+                path: akey
+              - key: secret
+                path: secret

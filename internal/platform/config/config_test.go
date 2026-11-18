@@ -44,20 +44,24 @@ func TestConfigLoad(t *testing.T) {
 		// Assert
 		require.NoError(tt, err)
 		assert.Equal(tt, config.Config{
-			Namespace:   "store-ns",
-			LogLevel:    "info",
-			MetricsAddr: ":8080",
-			ProbeAddr:   ":8081",
+			Namespace:          "store-ns",
+			LogLevel:           "info",
+			MetricsAddr:        ":8080",
+			ProbeAddr:          ":8081",
+			CredentialsDir:     "/etc/cosi/credentials",
+			RootCredentialsDir: "/etc/cosi/root-credentials",
 		}, got)
 	})
 
 	t.Run("WhenEverythingIsSet", func(tt *testing.T) {
 		// Setup
 		e := map[string]string{
-			config.EnvNamespace:   "store-ns",
-			config.EnvLogLevel:    "debug",
-			config.EnvMetricsAddr: ":9090",
-			config.EnvProbeAddr:   ":9091",
+			config.EnvNamespace:          "store-ns",
+			config.EnvLogLevel:           "debug",
+			config.EnvMetricsAddr:        ":9090",
+			config.EnvProbeAddr:          ":9091",
+			config.EnvCredentialsDir:     "/keys",
+			config.EnvRootCredentialsDir: "/root-keys",
 		}
 
 		// Execute
@@ -65,6 +69,13 @@ func TestConfigLoad(t *testing.T) {
 
 		// Assert
 		require.NoError(tt, err)
-		assert.Equal(tt, config.Config{Namespace: "store-ns", LogLevel: "debug", MetricsAddr: ":9090", ProbeAddr: ":9091"}, got)
+		assert.Equal(tt, config.Config{
+			Namespace:          "store-ns",
+			LogLevel:           "debug",
+			MetricsAddr:        ":9090",
+			ProbeAddr:          ":9091",
+			CredentialsDir:     "/keys",
+			RootCredentialsDir: "/root-keys",
+		}, got)
 	})
 }
